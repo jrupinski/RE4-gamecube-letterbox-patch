@@ -16,6 +16,9 @@ Provided as:
 - **xdelta patches** for both discs (play on a GameCube via Swiss/ODE, or in Dolphin)
 - **Gecko code** (Swiss cheats file and Dolphin `.ini`)
 
+**Tested on a real GameCube via Swiss** with no errors, including Hunnigan's radio calls, and in
+Dolphin.
+
 Only the **USA release (`G4BE08`, Rev 0)** is supported. Both discs share the same `main.dol`, so
 the same changes apply to Disc 1 and Disc 2.
 
@@ -112,7 +115,8 @@ The letterbox only covered it up, so removing the bars shows real picture, not s
 - **Dolphin:** at the end of Hunnigan's radio calls, Dolphin may show
   `Invalid read from 0xffffffe4, PC = 0x80191b90`. This is a known Dolphin issue with the
   **unmodified** game ([dolphin-emu #13579](https://bugs.dolphin-emu.org/issues/13579)), not
-  caused by this patch. Click "Ignore for this session", or enable **Write-Back Cache** in Dolphin.
+  caused by this patch, and it does not occur on real hardware. Click "Ignore for this session",
+  or enable **Write-Back Cache** in Dolphin.
 
 ## Credits
 
