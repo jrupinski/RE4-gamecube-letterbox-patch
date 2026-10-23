@@ -5,6 +5,19 @@ Gecko line `04XXXXXX YYYYYYYY` writes the 32-bit value `YYYYYYYY` to address `0x
 game's code and data in RAM. Disassembly is PowerPC (Gekko). Each preset is the **shared lines**
 plus the **preset lines**. See [README_MORE.md](../README_MORE.md) for background.
 
+The tables list every changed word as its own `04` line, for readability. The shipped codes in
+`swiss/` and `dolphin/` are packed: runs of 3 or more consecutive words use the Gecko string-write
+type `06XXXXXX NNNNNNNN` (write `NNNNNNNN` bytes starting at `0x80XXXXXX`), followed by the data
+two words per line. The last data line is padded with `00000000`, which isn't written. Packed and
+unpacked codes write exactly the same bytes. For example, the 5 sprite lines become:
+
+```
+0611BB8C 00000014
+28000030 41820050
+5409EEFA 7D69E02E
+5D6B0001 00000000
+```
+
 | Field | Meaning |
 |---|---|
 | `pG` | game state structure at `0x8027F7D0` |

@@ -190,6 +190,19 @@ A Gecko line `04XXXXXX YYYYYYYY` writes the 32-bit value `YYYYYYYY` to address `
 game's code and data in RAM). The xdelta patches write exactly the same values
 into `main.dol`. All presets share the first 12 lines.
 
+The tables list every changed word as its own `04` line, for readability. The shipped codes in
+`swiss/` and `dolphin/` are packed: runs of 3 or more consecutive words use the Gecko string-write
+type `06XXXXXX NNNNNNNN` (write `NNNNNNNN` bytes starting at `0x80XXXXXX`), followed by the data
+two words per line. The last data line is padded with `00000000`, which isn't written. Packed and
+unpacked codes write exactly the same bytes. For example, the 5 sprite lines become:
+
+```
+0611BB8C 00000014
+28000030 41820050
+5409EEFA 7D69E02E
+5D6B0001 00000000
+```
+
 ### Shared 1: hide the HUD bar sprites (5 lines, needed, all together)
 
 The HUD drawing loop (`0x8011BB2C`) already skips sprites whose group bit is set in the
