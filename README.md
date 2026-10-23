@@ -1,6 +1,11 @@
 # Resident Evil 4 Gamecube - remove faux-letterboxing
 
-### The holy grail (of mine) - GameCube Resident Evil 4, with full-frame rendering achieved. NO CROPPING - this is the real deal, full 4:3 rendered screen.
+### The holy grail (of mine) - GameCube Resident Evil 4, with full-frame rendering achieved. NO CROPPING  - this is the real deal, full 4:3 rendered screen.
+
+| Before | After |
+|----------|----------|
+| <img width="1512" height="949" alt="image" src="https://github.com/user-attachments/assets/88f7ff23-779d-4a82-ac3a-da4d2079873a" />  | <img width="1512" height="949" alt="image" src="https://github.com/user-attachments/assets/ec038e7e-d08a-4a98-afec-e079a6946f13" />  |
+| <img width="1512" height="949" alt="image" src="https://github.com/user-attachments/assets/6023790f-fb83-4787-8d96-cf00123a06c3" />  | <img width="1512" height="949" alt="image" src="https://github.com/user-attachments/assets/d988add6-0795-4cd3-ab1e-06f2bf0f837a" />  |
 
 
 Removes the faux-letterboxing that was done in the original GameCube version.
@@ -27,7 +32,7 @@ The gameplay + cutscenes patch is what the future ports look like (no letterboxi
 ---
 
 ## Installation
-## Option 1: Gecko codes
+## Option 1: Gecko cheat code
 
 Use one of the codes (and only one).
 
