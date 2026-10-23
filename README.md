@@ -75,51 +75,176 @@ Use **either** a patched ISO **or** a Gecko code, not both. They make identical 
 
 ## How it works
 
-The letterbox in the GameCube version is made of three things:
+### Where the letterbox comes from
 
-1. **`Draw_cinesco()`** (`0x80171C64`) draws two black quads over rows 0–56 and 393–449 at the
-   end of every frame. Its controller `cine_polling()` (`0x80171B3C`) decides once per frame whether
-   the bars are on and fades them in or out over 15 frames.
-2. **HUD bar sprites** (`IDC_CINESCO`, HUD display group `0x30`) are a second pair of black bars
-   in the HUD sprite list.
+The letterbox in the GameCube version is made of three separate things. All three have to be
+handled to get a clean full frame.
+
+1. **`Draw_cinesco()`** (`0x80171C64`, decomp `game/cinesco.cpp`) draws two black quads over rows
+   0–56 and 393–449 of the 512×448 frame at the end of every frame, with the alpha in `cine_work`.
+   It draws nothing when the alpha is 0.
+2. **HUD bar sprites** (`IDC_CINESCO`) are a second pair of black 640×60 bars at y = ±210 in the
+   HUD sprite list, in HUD display group `0x30`.
 3. **A "letterbox mode" flag** (bit `0x800` of `pG+0x54`) restricts the 3D render scissor to rows
    56–392 and switches several screen effects to their strip-only variants.
 
-The game already renders the 3D scene with a full 4:3 projection over the whole 448-line viewport.
-The letterbox only covered it up, so removing the bars shows real picture, not stretched picture.
+The game already renders the 3D scene with a full 4:3 projection (vertical FOV 50°, aspect 1.333)
+over the whole 512×448 viewport. The letterbox only covered it up, so removing it shows real
+picture, not stretched picture.
 
-All presets share 12 lines:
+### Game data used
 
-- 5 lines hide the HUD bar sprites
-- 6 lines make every letterbox-mode check take the game's full-frame path
-- 1 line makes the fade overlay cover the whole screen
+| Address | Name | Meaning |
+|---|---|---|
+| `0x8027F7D0` | `pG` | the game's main state structure (also reachable as `lwz rX, -0x7500(r13)`) |
+| `pG+0x54` | `System_flg` | bit `0x800` = letterbox mode |
+| `pG+0x170` | `Stop_flg` | 0 during free play, `0xFFFFFFFF` while the game is frozen: pause/options menu, inventory/map/files/shop, cutscenes, movies |
+| `pG+0x5018` | `Status_flg[0]` | `0x01000000` STA_CINESCO (letterbox requested), `0x00040000` STA_SUB_SCRN (inventory etc.), `0x00001000` STA_EVENT (cutscene), `0x10000000`/`0x04000000` STA_MOVIE_ON / STA_MOVIE2_ON |
+| `pG+0x5024` | `Status_flg[3]` | bit `0x10000000` = letterbox scissor active (set by the render loop) |
+| `0x802B3220` | `cine_work` | `+0` state (0 idle, 1 fade in, 2 fade out), `+1` bar alpha, `+2` previous on/off, `+4` fade timer (float) |
+| `0x8027F5DC` | HUD sprite list | `+0x2C` hidden-groups bitmask, `+0x4C` sprite array (`0x138` bytes per sprite, group at `+2`, layer at `+0x80`) |
 
-The presets then differ only in the yes/no decision inside `cine_polling`. It originally reads "bars
-on when the game requests them", which is always. `Draw_cinesco` and the fade routines are untouched.
+The bit numbering of the decomp's flag enums is MSB-first: flag *n* is
+`0x80000000 >> (n % 32)` in word *n / 32*. The decomp is a debug build, and in retail
+`Status_flg` sits at `pG+0x5018` instead of the decomp's `0x500C`. The early fields
+(`System_flg`, `Stop_flg`, …) are at the same offsets.
 
-- **gameplay** (2 lines): bars on when `Stop_flg` (`pG+0x170`) is non-zero, i.e. the game is frozen
-  (menus, inventory, cutscenes, movies).
-- **gameplay + cutscenes** (7 lines): bars on when the game is frozen and the cutscene flag
-  (`STA_EVENT`, `0x00001000` in `pG+0x5018`) is not set.
-- **everywhere** (1 line): the bars are never requested.
+### The original bar controller
 
-**[docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md)** explains every single line: address,
-original instruction, new instruction, and what it does.
+Each frame `CinescoMove` (`0x80171AF0`) sets STA_CINESCO and calls one of three routines through
+the table `cine_tbl` at `0x8020CE60`:
 
-## Known issues
+- `cine_polling` (`0x80171B3C`): decides whether the bars should be on, and starts a 15-frame fade
+  when that changes
+- `cine_on_move` (`0x80171B94`): fade in
+- `cine_off_move` (`0x80171C00`): fade out
 
-- A few post-processing effects (some blur/glow passes) copy only rows 56–392 by design, because
-  those coordinates are hard-coded in the game. In some scenes they may stop at a visible edge near
-  the top or bottom of the screen.
-- **gameplay + cutscenes:** a movie that plays during a cutscene event would also lose its bars.
-- **Dolphin only:** at the end of Hunnigan's radio calls, Dolphin may show
-  `Invalid read from 0xffffffe4, PC = 0x80191b90`. This is a known Dolphin issue with the
-  **unmodified** game ([dolphin-emu #13579](https://bugs.dolphin-emu.org/issues/13579)), not
-  caused by this patch, and it does not occur on real hardware. Click "Ignore for this session",
-  or enable **Write-Back Cache** in Dolphin.
-- **Dolphin only:** a single purple frame when closing the inventory or map also happens with the
-  unmodified game. It is Dolphin's display of an empty frame buffer. Turning off
-  **Graphics → Hacks → Store XFB Copies to Texture Only** avoids it.
+```
+cine_polling:
+80171B3C  lwz    r9, -0x7500(r13)   ; r9 = pG
+80171B40  li     r11, 1             ; want bars = 1
+80171B44  lwz    r0, 0x5018(r9)     ; r0 = Status_flg[0]
+80171B48  andis. r9, r0, 0x100      ; STA_CINESCO set?
+80171B4C  bne    +8                 ; yes: keep 1
+80171B50  li     r11, 0             ; no: want bars = 0
+80171B54  lbz    r0, 2(r3)          ; previous on/off
+80171B58  extsb  r0, r0
+80171B5C  cmpw   r0, r11            ; changed?
+80171B60  beqlr                     ; no: return
+...                                 ; yes: store it, state = 1 or 2, timer = 15.0
+```
+
+The presets change only the decision part (`0x80171B40`–`0x80171B58`). The fade routines and
+`Draw_cinesco` are untouched.
+
+## Every line explained
+
+A Gecko line `04XXXXXX YYYYYYYY` writes the 32-bit value `YYYYYYYY` to address `0x80XXXXXX` (the
+game's code and data in RAM). The xdelta patches and `patch_re4.py` write exactly the same values
+into `main.dol`. All presets share the first 12 lines.
+
+### Shared 1: hide the HUD bar sprites (5 lines, needed, all together)
+
+The HUD drawing loop (`0x8011BB2C`) already skips sprites whose group bit is set in the
+hidden-groups mask. These lines rewrite that check in fewer instructions. The two freed slots now
+also skip group `0x30`. Removing any one of them breaks the loop.
+
+| Line | Original | New | What it does |
+|---|---|---|---|
+| `0411BB8C 28000030` | `rlwinm r9,r0,29,27,29` | `cmplwi r0, 0x30` | is this sprite in group 0x30 (the bar sprites)? |
+| `0411BB90 41820050` | `clrlwi r0,r0,27` | `beq 0x8011BBE0` | yes: skip drawing it |
+| `0411BB94 5409EEFA` | `lwzx r11,r9,r28` | `rlwinm r9,r0,29,27,29` | (moved) word index into the hidden-groups mask = group / 32 |
+| `0411BB98 7D69E02E` | `srw r0,r27,r0` | `lwzx r11,r9,r28` | (moved) load the mask word |
+| `0411BB9C 5D6B0001` | `and. r9,r11,r0` | `rlwnm. r11,r11,r0,0,0` | rotate the sprite's group bit to the top and test it; this replaces the original shift + and, which freed the two slots |
+
+### Shared 2: render the full frame (6 lines)
+
+Each line changes `andi. rX, r0, 0x800` (test the letterbox-mode flag) to `andi. rX, r0, 0`
+(always false), so that code takes the game's own full-frame path.
+
+| Line | Location | Needed? |
+|---|---|---|
+| `04165E88 700B0000` | main render loop (`0x80165E60`): enables the 3D scissor to rows 56–392 (via `pG+0x5024` and `0x80123E14`) | **yes**: the flag is on during gameplay, and without this line rows 0–55 and 393–447 stay black |
+| `040FA860 70090000` | screen effect: EFB strip copy offset (56 vs 0) | cosmetic: without it the effect covers only rows 56–392 |
+| `041789A8 70090000` | screen effect: EFB copy offset (56 vs 0) | cosmetic: pairs with the next line |
+| `04178DC8 70090000` | the same effect: texture projection (y scale 0.667 strip / 0.5 full) | must be changed together with the previous line |
+| `0417CADC 70090000` | screen effect: offset (56 vs 0) | cosmetic |
+| `04182FD4 70090000` | screen effect: offset (56 vs 0) | cosmetic |
+
+The five effect lines were never tested individually. Try removing one at a time and watch for an
+effect (blur, glow, heat haze) ending at a hard edge 56 rows from the top or bottom.
+
+### Shared 3: full-screen fades (1 line)
+
+| Line | Original | New | What it does |
+|---|---|---|---|
+| `041EBB2C 00000000` | float `56.0` | float `0.0` | top offset of the fade-to-black overlay (function `0x8011251C`); without it, fades leave the top and bottom rows bright |
+
+### Preset "gameplay": bars in menus, inventory, cutscenes, movies (2 lines)
+
+| Line | Original | New | What it does |
+|---|---|---|---|
+| `04171B44 80090170` | `lwz r0, 0x5018(r9)` | `lwz r0, 0x170(r9)` | read `Stop_flg` instead of `Status_flg[0]` |
+| `04171B48 2C000000` | `andis. r9, r0, 0x100` | `cmpwi r0, 0` | bars on when `Stop_flg != 0` (game frozen) instead of when STA_CINESCO is set |
+
+### Preset "gameplay + cutscenes": bars in menus, inventory, movies (7 lines)
+
+The rule is: bars on = `Stop_flg != 0` AND NOT STA_EVENT.
+
+| Line | Original | New | What it does |
+|---|---|---|---|
+| `04171B40 80090170` | `li r11, 1` | `lwz r0, 0x170(r9)` | r0 = `Stop_flg` |
+| `04171B44 81295018` | `lwz r0, 0x5018(r9)` | `lwz r9, 0x5018(r9)` | r9 = `Status_flg[0]` |
+| `04171B48 3180FFFF` | `andis. r9, r0, 0x100` | `addic r12, r0, -1` | carry = (`Stop_flg != 0`) |
+| `04171B4C 7D6C0110` | `bne +8` | `subfe r11, r12, r0` | r11 = carry: 1 = frozen, 0 = free play |
+| `04171B50 5529A7FE` | `li r11, 0` | `rlwinm r9, r9, 20, 31, 31` | r9 = STA_EVENT bit (`0x00001000`) as 0/1 |
+| `04171B54 7D6B4878` | `lbz r0, 2(r3)` | `andc r11, r11, r9` | r11 = frozen AND NOT cutscene |
+| `04171B58 88030002` | `extsb r0, r0` | `lbz r0, 2(r3)` | the original "previous on/off" load, moved down one slot; the `extsb` was dropped because the value is only ever 0 or 1 |
+
+Because cutscenes are detected by STA_EVENT, a movie that plays during an event would also lose its
+bars.
+
+### Preset "everywhere": no bars (1 line)
+
+| Line | Original | New | What it does |
+|---|---|---|---|
+| `04171B4C 60000000` | `bne +8` | `nop` | the "bars on" branch is never taken, so `li r11, 0` always runs and the bars are never requested |
+
+## Notes for further work
+
+- **Minimum set:** to remove the bars only, you need the sprite lines (5) + `04165E88` + the
+  decision lines. The effect lines and the fade line are for clean results.
+- **New presets:** any rule that `cine_polling` can compute in the decision slots
+  (`0x80171B40`–`0x80171B58`, 7 words once `extsb` is dropped) works without new code.
+  - A single bit test of `Status_flg[0]` fits in one line. For example, "bars only in movies" is
+    `04171B48 74091400` (`andis. r9, r0, 0x1400`).
+  - Movie and sub-screen bits are in the upper half of the word and STA_EVENT is in the lower half,
+    so one `andis.`/`andi.` can't test both.
+- **Strip-only effects not handled:** a few effects copy the EFB strip with the top `0x38` written
+  directly into their code, regardless of the letterbox flag: functions around `0x800F66F8`,
+  `0x800FD994`, `0x801015BC` and `0x8016CBD0` (`li r4, 0x38` before `GXSetTexCopySrc`
+  `0x80095E44`). They aren't patched. If an effect shows an edge, it is probably one of these.
+- **Other functions of interest:**
+
+  | Address | Function |
+  |---|---|
+  | `0x80093B5C` | `GXSetScissor` |
+  | `0x80093AF0` | `GXSetViewport` |
+  | `0x80093708` | `GXSetProjection` |
+  | `0x80095DC8` | `GXSetDispCopySrc` |
+  | `0x80096400` | `GXCopyDisp` |
+  | `0x8012405C` | render-mode setup (512×448 EFB/XFB) |
+  | `0x80123E14` | restore the scissor (applies the letterbox scissor if `pG+0x5024 & 0x10000000`) |
+
+- **Other regions:** the addresses are for USA Rev 0 only. A PAL port (`G4BP08`) would need the
+  same functions located again. The decomp's function names and the instruction patterns above
+  make that straightforward.
+- **Debugging:** in Dolphin, Free Look shows which parts are overlays: overlays move with the
+  camera, while the scissored render area does not. Dolphin's debugger (`Dolphin -d`) and
+  memory view work well with the addresses above.
+
+**[docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md)** contains the same per-line tables, generated
+from the patch data.
 
 ## Credits
 
