@@ -25,12 +25,62 @@ everything applies to Disc 1 and Disc 2.
 
 ## Option 1: Gecko codes (Swiss / Dolphin)
 
-Enable **exactly one** of the three codes.
+Enable **exactly one** of the three preset codes. Optionally also enable
+**HUD: move health meter to screen edge in gameplay** (see [Optional: health meter position](#optional-health-meter-position)).
 
 - **Swiss (real GameCube):** copy `swiss/swiss/cheats/G4BE08.txt` to `SD:/swiss/cheats/G4BE08.txt`
   and enable one code in the game's cheats menu.
 - **Dolphin:** add the contents of `dolphin/G4BE08.ini` to your user `GameSettings/G4BE08.ini`
   (the gameplay preset is pre-enabled), or paste a code in **Properties → Gecko Codes**.
+
+## Optional: health meter position
+
+The HUD was laid out for the letterboxed picture. Without the bars, the health meter (ammo ring,
+ammo count, "Leon") floats 56 pixels above the bottom edge. The optional Gecko code
+**HUD: move health meter to screen edge in gameplay** moves it down by exactly that amount, so it
+sits at the bottom edge like in the original framing. Use it together with a preset. It is
+available as a **Gecko code only**: it adds new code, and `main.dol` has no free space for that in
+an ISO patch.
+
+```
+C211B06C 00000009
+899F0002 2C0C0021
+40820034 819F0068
+2C0C0000 40820028
+818D8B00 818C0170
+2C0C0000 40820018
+C01F0098 3D80802B
+C02C3F54 EC000828
+D01F0098 881F0004
+60000000 00000000
+```
+
+**How it works.** The HUD is drawn by the ID system (decomp `game/id_sys.cpp`). Every frame,
+`idSysMove00` (`0x8011AE9C`) computes each HUD object's position as `pos = pos0 + animation
+offset` (`ID_UNIT`: `+0x88` pos0, `+0x94` pos, `+0x02` class, `+0x68` parent). The units are a
+640×480 screen space with y = 0 at the centre and negative y downwards. The bars covered 60 units
+at each edge, i.e. 56 pixels of the 448-line frame.
+
+The `C2` line inserts code right after that calculation, at `0x8011B06C`. For objects of class
+`0x21` (`IDC_LIFE_METER`) that have no parent, and only while `Stop_flg` (`pG+0x170`) is 0 (free
+play), it subtracts 60.0 from `pos.y`. Child objects (ring, digits, name plate) follow their parent.
+Menus and the inventory keep the original position, under their bars.
+
+| Instruction | What it does |
+|---|---|
+| `lbz r12, 2(r31)` / `cmpwi r12, 0x21` / `bne done` | only HUD objects of class 0x21 (health meter) |
+| `lwz r12, 0x68(r31)` / `cmpwi r12, 0` / `bne done` | only top-level objects (children follow) |
+| `lwz r12, -0x7500(r13)` / `lwz r12, 0x170(r12)` / `cmpwi r12, 0` / `bne done` | only in free play (`Stop_flg == 0`) |
+| `lfs f0, 0x98(r31)` | f0 = `pos.y` |
+| `lis r12, 0x802B` / `lfs f1, 0x3F54(r12)` | f1 = 60.0 (an existing constant in the game's read-only data) |
+| `fsubs f0, f0, f1` / `stfs f0, 0x98(r31)` | `pos.y -= 60` (56 pixels down) |
+| `done: lbz r0, 4(r31)` | the original instruction at `0x8011B06C` |
+
+Moving the whole HUD at once (the HUD screen matrix `IDSystem::m_scrn_mat`, `0x802B173C`) also
+works, but it slides other HUD parts into view, such as a red marker that the game parks just
+above the top edge. That's why the code moves only the health meter.
+
+---
 
 ## Option 2: patch your ISO
 
