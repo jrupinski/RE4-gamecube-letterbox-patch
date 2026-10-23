@@ -1,6 +1,6 @@
 # Code reference
 
-Every line of the Gecko codes. These are also every word the patcher and the xdelta patches change in
+Every line of the Gecko codes. These are also every word the xdelta patches change in
 `main.dol`. A Gecko line `04XXXXXX YYYYYYYY` means "write the 32-bit value `YYYYYYYY` to address
 `0x80XXXXXX`", the game's code and data in RAM. Disassembly is PowerPC (Gekko).
 
