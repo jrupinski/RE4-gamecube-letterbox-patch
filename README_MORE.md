@@ -8,15 +8,16 @@ Choose **one** preset:
 
 | Preset | Bars removed in | Bars kept in |
 |---|---|---|
-| **gameplay** (recommended) | gameplay | pause/options menu, inventory/map/files/shop, cutscenes, movies |
-| **gameplay + cutscenes** | gameplay, in-engine cutscenes | pause/options menu, inventory/map/files/shop, movies |
-| **everywhere** | the whole game | – |
+| **gameplay** (recommended) | gameplay | title screen menus, pause/options menu, inventory/map/files/shop, cutscenes, movies |
+| **gameplay + cutscenes** | gameplay, in-engine cutscenes | title screen menus, pause/options menu, inventory/map/files/shop, movies |
+| **everywhere** | the whole game, including menus | – |
 
 Menus, the inventory and movies were laid out for the letterboxed screen, so they look best with
 the bars kept. Where the bars are kept, they fade in and out just like in the original game.
 
-**The gameplay preset is tested on a real GameCube via Swiss** with no errors, including Hunnigan's
-radio calls.
+An earlier version of the gameplay preset (identical except for the title screen menu fix) was
+tested on a real GameCube via Swiss with no errors, including Hunnigan's radio calls. The current
+presets are tested in Dolphin.
 
 Only the **USA release (`G4BE08`, Rev 0)** is supported. Both discs share the same `main.dol`, so
 everything applies to Disc 1 and Disc 2.
@@ -106,8 +107,8 @@ xdelta3 -d -s "Resident Evil 4 (USA) (Disc 1).iso" \
 
 | Preset | Disc 1 result MD5 | Disc 2 result MD5 |
 |---|---|---|
-| gameplay | `6c372fd391d2add37de83027182bd099` | `21fc8de4158328934759cd734d16b357` |
-| gameplay + cutscenes | `3cf7546a34044326a50a1f9ecb671976` | `ead1c0d08f41656736554b2f7687c8df` |
+| gameplay | `e68bc752fe633102bcd652326c86206f` | `143835c34d711e515195fb4de1a430fd` |
+| gameplay + cutscenes | `374df58e6db444fdd5a4a467e2cefe96` | `0794f4c67070c13fb795dec654b9b15a` |
 | everywhere | `94eba2d3dae28e97aaf866ec791d0adb` | `d3a9a7503e4fe9116e5864151664c085` |
 
 Use **either** a patched ISO **or** a Gecko code, not both. They make identical changes.
@@ -141,6 +142,7 @@ picture, not stretched picture.
 | `pG+0x54` | `System_flg` | bit `0x800` = letterbox mode |
 | `pG+0x170` | `Stop_flg` | 0 during free play, `0xFFFFFFFF` while the game is frozen: pause/options menu, inventory/map/files/shop, cutscenes, movies |
 | `pG+0x5018` | `Status_flg[0]` | `0x01000000` STA_CINESCO (letterbox requested), `0x00040000` STA_SUB_SCRN (inventory etc.), `0x00001000` STA_EVENT (cutscene), `0x10000000`/`0x04000000` STA_MOVIE_ON / STA_MOVIE2_ON |
+| `pG+0x5020` | `Status_flg[2]` | bit `0x00008000` = STA_TITLE (title screen and its menus are active) |
 | `pG+0x5024` | `Status_flg[3]` | bit `0x10000000` = letterbox scissor active (set by the render loop) |
 | `0x802B3220` | `cine_work` | `+0` state (0 idle, 1 fade in, 2 fade out), `+1` bar alpha, `+2` previous on/off, `+4` fade timer (float) |
 | `0x8027F5DC` | HUD sprite list | `+0x2C` hidden-groups bitmask, `+0x4C` sprite array (`0x138` bytes per sprite, group at `+2`, layer at `+0x80`) |
@@ -175,8 +177,12 @@ cine_polling:
 ...                                 ; yes: store it, state = 1 or 2, timer = 15.0
 ```
 
-The presets change only the decision part (`0x80171B40`–`0x80171B58`). The fade routines and
+The presets change only `cine_polling`: the decision part (`0x80171B40`–`0x80171B58`), and for
+"gameplay + cutscenes" also the code after it, rewritten more compactly. The fade routines and
 `Draw_cinesco` are untouched.
+
+`Stop_flg` is also 0 on the title screen, because no game is running there. The title screen menus
+were laid out for the bars too, so both "gameplay" presets also keep the bars while STA_TITLE is set.
 
 ## Every line explained
 
@@ -221,26 +227,47 @@ effect (blur, glow, heat haze) ending at a hard edge 56 rows from the top or bot
 |---|---|---|---|
 | `041EBB2C 00000000` | float `56.0` | float `0.0` | top offset of the fade-to-black overlay (function `0x8011251C`); without it, fades leave the top and bottom rows bright |
 
-### Preset "gameplay": bars in menus, inventory, cutscenes, movies (2 lines)
+### Preset "gameplay": bars in menus, inventory, cutscenes, movies (7 lines)
 
-| Line | Original | New | What it does |
-|---|---|---|---|
-| `04171B44 80090170` | `lwz r0, 0x5018(r9)` | `lwz r0, 0x170(r9)` | read `Stop_flg` instead of `Status_flg[0]` |
-| `04171B48 2C000000` | `andis. r9, r0, 0x100` | `cmpwi r0, 0` | bars on when `Stop_flg != 0` (game frozen) instead of when STA_CINESCO is set |
-
-### Preset "gameplay + cutscenes": bars in menus, inventory, movies (7 lines)
-
-The rule is: bars on = `Stop_flg != 0` AND NOT STA_EVENT.
+The rule is: bars on = `Stop_flg != 0` OR STA_TITLE.
 
 | Line | Original | New | What it does |
 |---|---|---|---|
 | `04171B40 80090170` | `li r11, 1` | `lwz r0, 0x170(r9)` | r0 = `Stop_flg` |
-| `04171B44 81295018` | `lwz r0, 0x5018(r9)` | `lwz r9, 0x5018(r9)` | r9 = `Status_flg[0]` |
-| `04171B48 3180FFFF` | `andis. r9, r0, 0x100` | `addic r12, r0, -1` | carry = (`Stop_flg != 0`) |
-| `04171B4C 7D6C0110` | `bne +8` | `subfe r11, r12, r0` | r11 = carry: 1 = frozen, 0 = free play |
-| `04171B50 5529A7FE` | `li r11, 0` | `rlwinm r9, r9, 20, 31, 31` | r9 = STA_EVENT bit (`0x00001000`) as 0/1 |
-| `04171B54 7D6B4878` | `lbz r0, 2(r3)` | `andc r11, r11, r9` | r11 = frozen AND NOT cutscene |
+| `04171B44 81895020` | `lwz r0, 0x5018(r9)` | `lwz r12, 0x5020(r9)` | r12 = `Status_flg[2]` |
+| `04171B48 558C8FFE` | `andis. r9, r0, 0x100` | `rlwinm r12, r12, 17, 31, 31` | r12 = STA_TITLE bit (`0x00008000`) as 0/1 |
+| `04171B4C 7C006378` | `bne +8` | `or r0, r0, r12` | frozen OR title screen |
+| `04171B50 3180FFFF` | `li r11, 0` | `addic r12, r0, -1` | carry = (r0 != 0) |
+| `04171B54 7D6C0110` | `lbz r0, 2(r3)` | `subfe r11, r12, r0` | r11 = carry: 1 = bars, 0 = no bars |
 | `04171B58 88030002` | `extsb r0, r0` | `lbz r0, 2(r3)` | the original "previous on/off" load, moved down one slot; the `extsb` was dropped because the value is only ever 0 or 1 |
+
+### Preset "gameplay + cutscenes": bars in menus, inventory, movies (19 lines)
+
+The rule is: bars on = (`Stop_flg != 0` AND NOT STA_EVENT) OR STA_TITLE. That doesn't fit in the 7
+decision slots, so the rest of `cine_polling` is rewritten more compactly: the fade state is
+computed as `2 - r11` with one `subfic` instead of the original branch, which frees the room.
+
+| Line | Original | New | What it does |
+|---|---|---|---|
+| `04171B40 80090170` | `li r11, 1` | `lwz r0, 0x170(r9)` | r0 = `Stop_flg` |
+| `04171B44 81895018` | `lwz r0, 0x5018(r9)` | `lwz r12, 0x5018(r9)` | r12 = `Status_flg[0]` |
+| `04171B48 3140FFFF` | `andis. r9, r0, 0x100` | `addic r10, r0, -1` | carry = (`Stop_flg != 0`) |
+| `04171B4C 7D6A0110` | `bne +8` | `subfe r11, r10, r0` | r11 = carry: 1 = frozen, 0 = free play |
+| `04171B50 558CA7FE` | `li r11, 0` | `rlwinm r12, r12, 20, 31, 31` | r12 = STA_EVENT bit (`0x00001000`) as 0/1 |
+| `04171B54 7D6B6078` | `lbz r0, 2(r3)` | `andc r11, r11, r12` | r11 = frozen AND NOT cutscene |
+| `04171B58 81895020` | `extsb r0, r0` | `lwz r12, 0x5020(r9)` | r12 = `Status_flg[2]` |
+| `04171B5C 558C8FFE` | `cmpw r0, r11` | `rlwinm r12, r12, 17, 31, 31` | r12 = STA_TITLE bit (`0x00008000`) as 0/1 |
+| `04171B60 7D6B6378` | `beqlr` | `or r11, r11, r12` | OR title screen: r11 = bars wanted |
+| `04171B64 88030002` | `cmpwi r11, 0` | `lbz r0, 2(r3)` | r0 = previous on/off |
+| `04171B68 7C005800` | `stb r11, 2(r3)` | `cmpw r0, r11` | changed? |
+| `04171B6C 4D820020` | `beq +0x1C` | `beqlr` | no: return |
+| `04171B70 99630002` | `lis r9, 0x801F` | `stb r11, 2(r3)` | remember the new on/off |
+| `04171B74 200B0002` | `li r0, 1` | `subfic r0, r11, 2` | fade state = 2 - r11 (1 = fade in, 2 = fade out) |
+| `04171B78 3D20801F` | `lfs f0, -0x17D0(r9)` | `lis r9, 0x801F` | r9 = 0x801F0000 (float constants) |
+| `04171B7C C009E830` | `stb r0, 0(r3)` | `lfs f0, -0x17D0(r9)` | f0 = 15.0 |
+| `04171B80 98030000` | `stfs f0, 4(r3)` | `stb r0, 0(r3)` | store the fade state |
+| `04171B84 D0030004` | `blr` | `stfs f0, 4(r3)` | fade timer = 15 frames |
+| `04171B88 4E800020` | `lis r9, 0x801F` | `blr` | return; the two old words after it are no longer reached |
 
 Because cutscenes are detected by STA_EVENT, a movie that plays during an event would also lose its
 bars.
@@ -255,8 +282,10 @@ bars.
 
 - **Minimum set:** to remove the bars only, you need the sprite lines (5) + `04165E88` + the
   decision lines. The effect lines and the fade line are for clean results.
-- **New presets:** any rule that `cine_polling` can compute in the decision slots
-  (`0x80171B40`–`0x80171B58`, 7 words once `extsb` is dropped) works without new code.
+- **New presets:** any rule that `cine_polling` can compute works without new code. The decision
+  slots are `0x80171B40`–`0x80171B58` (7 words once `extsb` is dropped). Compacting the rest of the
+  function as in "gameplay + cutscenes" gives room for 12 words of decision logic, up to
+  `0x80171B90`.
   - A single bit test of `Status_flg[0]` fits in one line. For example, "bars only in movies" is
     `04171B48 74091400` (`andis. r9, r0, 0x1400`).
   - Movie and sub-screen bits are in the upper half of the word and STA_EVENT is in the lower half,
