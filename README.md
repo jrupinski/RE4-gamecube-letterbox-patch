@@ -42,9 +42,11 @@ convert an RVZ to ISO: right-click the game, then **Convert File… → ISO**.
 | Disc 1 | `ca749757e3b9d119f3feb1f9f0f81bd7` |
 | Disc 2 | `2381acd2199d6e7566932df86901903d` |
 
-### a) xdelta patches
+Apply the `.xdelta` file for your disc and preset from `patches/` with any xdelta patcher, for example:
 
-Apply with [xdelta3](https://github.com/jmacd/xdelta) or a GUI such as Delta Patcher:
+- [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) (in the browser, no install)
+- Delta Patcher (Windows, macOS, Linux)
+- the `xdelta3` command line tool:
 
 ```sh
 xdelta3 -d -s "Resident Evil 4 (USA) (Disc 1).iso" \
@@ -57,17 +59,6 @@ xdelta3 -d -s "Resident Evil 4 (USA) (Disc 1).iso" \
 | gameplay | `6c372fd391d2add37de83027182bd099` | `21fc8de4158328934759cd734d16b357` |
 | gameplay + cutscenes | `3cf7546a34044326a50a1f9ecb671976` | `ead1c0d08f41656736554b2f7687c8df` |
 | everywhere | `94eba2d3dae28e97aaf866ec791d0adb` | `d3a9a7503e4fe9116e5864151664c085` |
-
-### b) Patcher script
-
-`patch_re4.py` needs Python 3 only. It patches **in place**, so work on a copy:
-
-```sh
-cp "Resident Evil 4 (USA) (Disc 1).iso" "RE4 Disc 1 [No Letterbox].iso"
-python3 patch_re4.py "RE4 Disc 1 [No Letterbox].iso" gameplay      # or: cutscenes, all
-```
-
-The script checks the game ID and every original word before writing.
 
 Use **either** a patched ISO **or** a Gecko code, not both. They make identical changes.
 
@@ -140,7 +131,7 @@ The presets change only the decision part (`0x80171B40`–`0x80171B58`). The fad
 ## Every line explained
 
 A Gecko line `04XXXXXX YYYYYYYY` writes the 32-bit value `YYYYYYYY` to address `0x80XXXXXX` (the
-game's code and data in RAM). The xdelta patches and `patch_re4.py` write exactly the same values
+game's code and data in RAM). The xdelta patches write exactly the same values
 into `main.dol`. All presets share the first 12 lines.
 
 ### Shared 1: hide the HUD bar sprites (5 lines, needed, all together)
