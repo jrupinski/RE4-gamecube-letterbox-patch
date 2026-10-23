@@ -1,11 +1,11 @@
 # Resident Evil 4 Gamecube - remove faux-letterboxing
 
-### The holy grail (of mine) - GameCube Resident Evil 4, with full-frame rendering achieved. NO CROPPING  - this is the real deal, full 4:3 rendered screen.
+### The holy grail (of mine) - GameCube Resident Evil 4, with full-frame rendering achieved on OG hardware. NO CROPPING  - this is the real deal, full 4:3 rendered screen.
 
 | Before | After |
 |----------|----------|
-| <img width="1512" height="949" alt="image" src="https://github.com/user-attachments/assets/88f7ff23-779d-4a82-ac3a-da4d2079873a" />  | <img width="1512" height="949" alt="image" src="https://github.com/user-attachments/assets/ec038e7e-d08a-4a98-afec-e079a6946f13" />  |
-| <img width="1512" height="949" alt="image" src="https://github.com/user-attachments/assets/6023790f-fb83-4787-8d96-cf00123a06c3" />  | <img width="1512" height="949" alt="image" src="https://github.com/user-attachments/assets/d988add6-0795-4cd3-ab1e-06f2bf0f837a" />  |
+| <img width="583" height="448" alt="G4BE08_2026-10-23_13-03-43" src="https://github.com/user-attachments/assets/9efd72f4-1d69-481e-86b8-dd383a8b2eb6" />  | <img width="583" height="448" alt="G4BE08_2026-10-23_13-03-52" src="https://github.com/user-attachments/assets/6613da44-203b-44c3-883a-3313b4c16a10" />  |
+| <img width="583" height="448" alt="G4BE08_2026-10-23_13-04-39" src="https://github.com/user-attachments/assets/b6d56dc6-1772-45d7-b9a4-358bc7b168f5" />  | <img width="583" height="448" alt="G4BE08_2026-10-23_13-04-53" src="https://github.com/user-attachments/assets/661a59d4-18ff-47a5-802c-0be0563465a2" />  |
 
 
 Removes the faux-letterboxing that was done in the original GameCube version.
