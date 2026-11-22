@@ -27,24 +27,26 @@ everything applies to Disc 1 and Disc 2.
 ## Option 1: Gecko codes (Swiss / Dolphin)
 
 Enable **exactly one** of the three preset codes. Optionally also enable
-**HUD: move health meter to screen edge in gameplay** (see [Optional: health meter position](#optional-health-meter-position)).
+**HUD: move health meter to screen edge in gameplay** (see [Health meter position](#health-meter-position)).
+The xdelta patches already include it.
 
 - **Swiss (real GameCube):** copy `swiss/swiss/cheats/G4BE08.txt` to `SD:/swiss/cheats/G4BE08.txt`
   and enable one code in the game's cheats menu.
 - **Dolphin:** add the contents of `dolphin/G4BE08.ini` to your user `GameSettings/G4BE08.ini`
   (the gameplay preset is pre-enabled), or paste a code in **Properties → Gecko Codes**.
 
-## Optional: health meter position
+## Health meter position
 
 The HUD was laid out for the letterboxed picture. Without the bars, the health meter (ammo ring,
-ammo count, "Leon") floats 56 pixels above the bottom edge. The optional Gecko code
-**HUD: move health meter to screen edge in gameplay** moves it down by exactly that amount, so it
-sits at the bottom edge like in the original framing. Use it together with a preset. It is
-available as a **Gecko code only**: it adds new code, and `main.dol` has no free space for that in
-an ISO patch.
+ammo count, "Leon") floats 56 pixels above the bottom edge. This change moves it down by exactly
+that amount during gameplay, so it sits at the bottom edge like in the original framing.
+
+- **xdelta patches:** included in all three presets.
+- **Gecko codes:** a separate optional code, **HUD: move health meter to screen edge in gameplay**.
+  Use it together with a preset. It writes exactly the same bytes as the xdelta patches.
 
 ```
-C211B06C 00000009
+06074E10 00000044
 899F0002 2C0C0021
 40820034 819F0068
 2C0C0000 40820028
@@ -53,7 +55,8 @@ C211B06C 00000009
 C01F0098 3D80802B
 C02C3F54 EC000828
 D01F0098 881F0004
-60000000 00000000
+480A6220 00000000
+0411B06C 4BF59DA4
 ```
 
 **How it works.** The HUD is drawn by the ID system (decomp `game/id_sys.cpp`). Every frame,
@@ -62,7 +65,8 @@ offset` (`ID_UNIT`: `+0x88` pos0, `+0x94` pos, `+0x02` class, `+0x68` parent). T
 640×480 screen space with y = 0 at the centre and negative y downwards. The bars covered 60 units
 at each edge, i.e. 56 pixels of the 448-line frame.
 
-The `C2` line inserts code right after that calculation, at `0x8011B06C`. For objects of class
+The patch hooks in right after that calculation: the instruction at `0x8011B06C` becomes a jump
+to new code, which runs the original instruction at the end and jumps back. For objects of class
 `0x21` (`IDC_LIFE_METER`) that have no parent, and only while `Stop_flg` (`pG+0x170`) is 0 (free
 play), it subtracts 60.0 from `pos.y`. Child objects (ring, digits, name plate) follow their parent.
 Menus and the inventory keep the original position, under their bars.
@@ -76,6 +80,24 @@ Menus and the inventory keep the original position, under their bars.
 | `lis r12, 0x802B` / `lfs f1, 0x3F54(r12)` | f1 = 60.0 (an existing constant in the game's read-only data) |
 | `fsubs f0, f0, f1` / `stfs f0, 0x98(r31)` | `pos.y -= 60` (56 pixels down) |
 | `done: lbz r0, 4(r31)` | the original instruction at `0x8011B06C` |
+| `b 0x8011B070` | back to the game |
+
+**Where the new code lives.** `main.dol` has no free space: its sections are packed back to back,
+and on the disc the file table follows `main.dol` 0x20 bytes later. So the 17 instructions
+overwrite the start of `DVDOpenDir` (`0x80074E10`), a Nintendo SDK function that the retail game
+never calls. Nothing in `main.dol` calls it, jumps to it or stores its address, and neither does
+any of the 105 REL modules on both discs (including the ones embedded in `em/*.drs`). In the decomp
+its only callers are the debug tools `t_movie/t_movie.cpp` and `t_movie/snd_test.cpp`, which aren't
+in the retail game. The rest of `DVDOpenDir` and the following `DVDReadDir`/`DVDCloseDir` are left
+as they are.
+
+| Line | Original | New |
+|---|---|---|
+| `0411B06C 4BF59DA4` | `lbz r0, 4(r31)` | `b 0x80074E10` |
+| `06074E10 00000044` + data | first 17 instructions of `DVDOpenDir` | the code above |
+
+An earlier version used a Gecko `C2` code, which stores the new code in the cheat handler's own
+memory. That works for cheats but not for an ISO patch, which has no cheat handler.
 
 Moving the whole HUD at once (the HUD screen matrix `IDSystem::m_scrn_mat`, `0x802B173C`) also
 works, but it slides other HUD parts into view, such as a red marker that the game parks just
@@ -107,11 +129,14 @@ xdelta3 -d -s "Resident Evil 4 (USA) (Disc 1).iso" \
 
 | Preset | Disc 1 result MD5 | Disc 2 result MD5 |
 |---|---|---|
-| gameplay | `e68bc752fe633102bcd652326c86206f` | `143835c34d711e515195fb4de1a430fd` |
-| gameplay + cutscenes | `374df58e6db444fdd5a4a467e2cefe96` | `0794f4c67070c13fb795dec654b9b15a` |
-| everywhere | `94eba2d3dae28e97aaf866ec791d0adb` | `d3a9a7503e4fe9116e5864151664c085` |
+| gameplay | `2f507e21d0c6afb4f46db1ce4fd737ef` | `98ed95f40a74ef1df9fe7fe5f6ef4c23` |
+| gameplay + cutscenes | `12babe1158b0859b9a8a040bf63ef9ff` | `027a65942605b942d1c8ce2f053998ac` |
+| everywhere | `67f8962465a0f519dfed62b734140826` | `da3a47d3ae9d36ca51820757e1339409` |
 
-Use **either** a patched ISO **or** a Gecko code, not both. They make identical changes.
+All three xdelta presets include the [health meter position](#health-meter-position) change.
+
+Use **either** a patched ISO **or** the Gecko codes, not both. A patched ISO makes the same changes
+as a preset code plus the health meter code.
 
 ---
 

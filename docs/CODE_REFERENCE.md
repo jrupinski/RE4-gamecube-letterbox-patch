@@ -102,3 +102,30 @@ more compactly to make room.
 | Gecko line | Address | Original | New | What it does |
 |---|---|---|---|---|
 | `04171B4C 60000000` | `80171B4C` | `bne 0x80171b54` | `nop ` | the "bars on" branch is never taken, so li r11, 0 always runs and the bars are never requested |
+
+## Health meter position
+
+Included in all xdelta presets; a separate optional Gecko code. The first 17 lines overwrite the
+start of `DVDOpenDir` (`0x80074E10`), an SDK function the retail game never calls. The last line
+jumps there from the HUD position code in `idSysMove00`.
+
+| Gecko line | Address | Original | New | What it does |
+|---|---|---|---|---|
+| `04074E10 899F0002` | `80074E10` | `mflr r0` | `lbz r12, 2(r31)` | class 0x21 (health meter)? |
+| `04074E14 2C0C0021` | `80074E14` | `stw r0, 4(r1)` | `cmpwi r12, 0x21` |  |
+| `04074E18 40820034` | `80074E18` | `stwu r1, -0x98(r1)` | `bne 0x80074e4c` | no: skip |
+| `04074E1C 819F0068` | `80074E1C` | `stw r31, 0x94(r1)` | `lwz r12, 0x68(r31)` | parent |
+| `04074E20 2C0C0000` | `80074E20` | `addi r31, r4, 0` | `cmpwi r12, 0` | top-level? |
+| `04074E24 40820028` | `80074E24` | `stw r30, 0x90(r1)` | `bne 0x80074e4c` | no: skip |
+| `04074E28 818D8B00` | `80074E28` | `addi r30, r3, 0` | `lwz r12, -0x7500(r13)` | r12 = pG |
+| `04074E2C 818C0170` | `80074E2C` | `bl 0x80074418` | `lwz r12, 0x170(r12)` | r12 = Stop_flg |
+| `04074E30 2C0C0000` | `80074E30` | `cmpwi r3, 0` | `cmpwi r12, 0` | free play? |
+| `04074E34 40820018` | `80074E34` | `bge 0x80074e68` | `bne 0x80074e4c` | no: skip |
+| `04074E38 C01F0098` | `80074E38` | `lwz r3, -0x6b28(r13)` | `lfs f0, 0x98(r31)` | f0 = pos.y |
+| `04074E3C 3D80802B` | `80074E3C` | `addi r4, r1, 0x10` | `lis r12, -0x7fd5` | r12 = 0x802B0000 |
+| `04074E40 C02C3F54` | `80074E40` | `li r5, 0x80` | `lfs f1, 0x3f54(r12)` | f1 = 60.0 (constant at 0x802B3F54) |
+| `04074E44 EC000828` | `80074E44` | `bl 0x800749cc` | `fsubs f0, f0, f1` | pos.y - 60 |
+| `04074E48 D01F0098` | `80074E48` | `lis r3, -0x7fe1` | `stfs f0, 0x98(r31)` | store pos.y (56 pixels down) |
+| `04074E4C 881F0004` | `80074E4C` | `crclr cr1eq` | `lbz r0, 4(r31)` | original instruction from 0x8011B06C |
+| `04074E50 480A6220` | `80074E50` | `addi r3, r3, 0x6fac` | `b 0x8011b070` | back to the game |
+| `0411B06C 4BF59DA4` | `8011B06C` | `lbz r0, 4(r31)` | `b 0x80074e10` | jump to the new code |
