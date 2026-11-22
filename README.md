@@ -3,8 +3,7 @@
 ### GameCube Resident Evil 4, playable for the first time in full framing, on OG hardware.
 **NO CROPPING** - this is the real deal, fully rendered screen, with smooth fading between in-game and cutscenes/menus.
 
-https://github.com/user-attachments/assets/950790e6-f4b5-4628-8e54-9b8d9c076fce
-
+https://github.com/user-attachments/assets/c364b368-2026-4b8e-8ce9-50cc56abe722
 
 | Before | After |
 |----------|----------|
