@@ -11,10 +11,10 @@ https://github.com/user-attachments/assets/950790e6-f4b5-4628-8e54-9b8d9c076fce
 | <img width="583" height="448" alt="G4BE08_2026-10-23_13-03-43" src="https://github.com/user-attachments/assets/9efd72f4-1d69-481e-86b8-dd383a8b2eb6" />  | <img width="583" height="448" alt="G4BE08_2026-11-22_13-36-55" src="https://github.com/user-attachments/assets/0364b276-3091-4732-a7d3-7a29ce37ebd7" /> |
 
 
-Direct gamecube captures (only in-game letterbox removed [no hud adjustment applied]):
+Direct gamecube captures @ 480p (only in-game letterbox removed [no hud adjustment applied]):
 | In-game | Cutscenes| Inventory | 
 |----------|----------|----------|
-| <img width="720" height="480" alt="snap 5" src="https://github.com/user-attachments/assets/daba8973-d432-46f7-b6d2-1c07b0e6ef70" /> | <img width="720" height="480" alt="snap 6" src="https://github.com/user-attachments/assets/b8ab832f-6072-4975-8f61-8645e1bbeeea" /> | <img width="720" height="480" alt="snap 7" src="https://github.com/user-attachments/assets/11cc6c1b-cedd-430a-9ba3-aea00b7c23fd" /> |
+| <img width="720" height="480" alt="snap 8" src="https://github.com/user-attachments/assets/5642352a-8340-4697-ac82-00296a2ff754" /> | <img width="720" height="480" alt="snap 6" src="https://github.com/user-attachments/assets/b8ab832f-6072-4975-8f61-8645e1bbeeea" /> | <img width="720" height="480" alt="snap 7" src="https://github.com/user-attachments/assets/11cc6c1b-cedd-430a-9ba3-aea00b7c23fd" /> |
 
 ---
 
