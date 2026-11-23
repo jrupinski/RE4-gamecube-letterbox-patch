@@ -3,14 +3,13 @@
 ### GameCube Resident Evil 4, playable for the first time in full framing, on OG hardware.
 **NO CROPPING** - this is the real deal, fully rendered screen, with smooth fading between in-game and cutscenes/menus.
 
-https://github.com/user-attachments/assets/c364b368-2026-4b8e-8ce9-50cc56abe722
-
 | Before | After |
 |----------|----------|
 | <img width="583" height="448" alt="G4BE08_2026-10-23_13-03-43" src="https://github.com/user-attachments/assets/9efd72f4-1d69-481e-86b8-dd383a8b2eb6" />  | <img width="583" height="448" alt="G4BE08_2026-11-22_13-36-55" src="https://github.com/user-attachments/assets/0364b276-3091-4732-a7d3-7a29ce37ebd7" /> |
 
+https://github.com/user-attachments/assets/c364b368-2026-4b8e-8ce9-50cc56abe722
 
-Direct gamecube captures @ 480p (only in-game letterbox removed [no hud adjustment applied]):
+Direct gamecube captures @ 480p:
 | In-game | Cutscenes| Inventory | 
 |----------|----------|----------|
 | <img width="720" height="480" alt="snap 8" src="https://github.com/user-attachments/assets/5642352a-8340-4697-ac82-00296a2ff754" /> | <img width="720" height="480" alt="snap 6" src="https://github.com/user-attachments/assets/b8ab832f-6072-4975-8f61-8645e1bbeeea" /> | <img width="720" height="480" alt="snap 7" src="https://github.com/user-attachments/assets/11cc6c1b-cedd-430a-9ba3-aea00b7c23fd" /> |
